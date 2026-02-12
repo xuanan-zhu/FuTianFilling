@@ -23,7 +23,7 @@ DEFAULT_HEADERS = [
     "有无宗教信仰"
 ]
 
-# ================= 2. 核心逻辑区 (保持原逻辑) =================
+# ================= 2. 核心逻辑区 =================
 
 def normalize_birth_date(value):
     """将各种格式的出生日期统一为：YYYY-MM-DD"""
@@ -155,29 +155,39 @@ st.markdown("---")
 st.sidebar.header("1. 文件设置")
 upload_option = st.sidebar.radio("选择模式:", ["📂 上传现有 Excel", "✨ 新建空白 Excel"])
 
-# Session State 用于存储当前的 Workbook
+# Session State 初始化
 if 'workbook' not in st.session_state:
     st.session_state.workbook = None
 if 'file_name' not in st.session_state:
     st.session_state.file_name = "团队统计表.xlsx"
+if 'last_loaded_key' not in st.session_state:
+    st.session_state.last_loaded_key = None
 
 # 处理文件加载逻辑
 if upload_option == "📂 上传现有 Excel":
     uploaded_file = st.sidebar.file_uploader("上传 .xlsx 文件", type=["xlsx"])
     if uploaded_file:
+        # 使用文件名和大小作为唯一标识符
+        file_key = f"{uploaded_file.name}_{uploaded_file.size}"
+        
         try:
-            # 只有当上传的文件改变时才重新加载
-            if st.session_state.get('last_uploaded_id') != uploaded_file.id:
+            # 只有当检测到是新文件时才加载
+            if st.session_state.last_loaded_key != file_key:
                 st.session_state.workbook = openpyxl.load_workbook(uploaded_file)
                 st.session_state.file_name = uploaded_file.name
-                st.session_state.last_uploaded_id = uploaded_file.id
-                st.sidebar.success("文件已加载！")
+                st.session_state.last_loaded_key = file_key
+                st.sidebar.success(f"已加载: {uploaded_file.name}")
+            else:
+                # 保持显示当前状态
+                st.sidebar.info(f"当前文件: {st.session_state.file_name}")
         except Exception as e:
             st.sidebar.error(f"文件读取失败: {e}")
 else:
     if st.sidebar.button("初始化新表格"):
         st.session_state.workbook = create_blank_workbook()
         st.session_state.file_name = "新团队统计表.xlsx"
+        # 重置加载记录，防止切回上传模式时冲突
+        st.session_state.last_loaded_key = "NEW_CREATED"
         st.sidebar.success("已创建新表格模板！")
 
 # --- Main: 数据录入 ---
@@ -210,16 +220,18 @@ else:
     st.markdown("---")
     st.header("3. 下载结果")
     
-    # 预览当前 Excel 的最后几行（可选功能，方便用户确认）
     try:
-        # 将 openpyxl worksheet 转为 pandas dataframe 用于预览
+        # 预览功能
+        # 注意：这里我们只读取值，不影响原 workbook
+        # 重新从内存中的 workbook 提取数据给 pandas 预览
         ws = st.session_state.workbook.active
-        data = ws.values
-        columns = next(data)
-        df = pd.DataFrame(data, columns=columns)
-        
-        st.caption(f"当前表格共有 {len(df)} 条数据，预览最后 3 条：")
-        st.dataframe(df.tail(3))
+        data = list(ws.values)
+        if data:
+            columns = data[0]
+            rows = data[1:]
+            df = pd.DataFrame(rows, columns=columns)
+            st.caption(f"当前表格共有 {len(df)} 条数据，预览最后 3 条：")
+            st.dataframe(df.tail(3))
         
         # 下载按钮
         excel_data = to_excel_bytes(st.session_state.workbook)
@@ -231,4 +243,4 @@ else:
         )
         
     except Exception as e:
-        st.warning("暂无数据或预览失败，但你可以继续添加。")
+        st.warning(f"预览或生成下载失败: {str
