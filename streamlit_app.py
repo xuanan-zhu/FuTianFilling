@@ -216,7 +216,9 @@ with col_preview:
                 st.caption(f"当前共 **{len(df)}** 条数据")
                 
                 # 全表预览 (使用 dataframe 组件，支持滚动、排序、搜索)
-                st.dataframe(df, use_container_width=True, height=300)
+                # st.dataframe(df, use_container_width=True, height=300)
+                # 全表预览 (改为静态表格，兼容旧版 iOS)
+                st.table(df)
                 
                 st.markdown("---")
                 # 下载按钮放在这里更显眼
@@ -232,3 +234,4 @@ with col_preview:
             st.error(f"预览生成失败: {e}")
     else:
         st.info("👈 请先在左侧加载 Excel 文件")
+
