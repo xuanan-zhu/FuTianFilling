@@ -243,4 +243,4 @@ else:
         )
         
     except Exception as e:
-        st.warning(f"预览或生成下载失败: {str
+        st.warning(f"预览或生成下载失败: {str(e)}")
